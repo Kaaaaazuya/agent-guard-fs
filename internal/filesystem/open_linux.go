@@ -7,7 +7,7 @@ import "golang.org/x/sys/unix"
 // システムコールで行われるので、検査後の差し替えは起きない。
 func openBeneath(dirfd int, name string, flags int) (int, error) {
 	return unix.Openat2(dirfd, name, &unix.OpenHow{
-		Flags:   uint64(flags | unix.O_CLOEXEC),
+		Flags:   uint64(flags | unix.O_CLOEXEC), //nolint:gosec // open flags are small constants
 		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS,
 	})
 }

@@ -27,14 +27,14 @@ func TestOpenRootRejectsNonDirectory(t *testing.T) {
 	}
 
 	if root, err := Open(file); err == nil {
-		root.Close()
+		_ = root.Close()
 		t.Fatal("Open(file) succeeded, want error")
 	}
 }
 
 func TestOpenRootRejectsMissingDirectory(t *testing.T) {
 	if root, err := Open(filepath.Join(t.TempDir(), "missing")); err == nil {
-		root.Close()
+		_ = root.Close()
 		t.Fatal("Open(missing) succeeded, want error")
 	}
 }

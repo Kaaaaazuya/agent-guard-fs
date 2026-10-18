@@ -22,7 +22,7 @@ func Open(dir string) (*Root, error) {
 		return nil, fmt.Errorf("open root %q: %w", dir, err)
 	}
 	if err := probe(fd); err != nil {
-		unix.Close(fd)
+		_ = unix.Close(fd)
 		return nil, err
 	}
 	return &Root{fd: fd}, nil
