@@ -5,6 +5,7 @@ package filesystem
 import (
 	"errors"
 	"os"
+	"path"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -27,11 +28,7 @@ func checkName(rel pathutil.RelPath) error {
 
 // baseName は rel の最後の要素を返す。ルート自身は "." を返す。
 func baseName(rel pathutil.RelPath) string {
-	s := rel.String()
-	if i := strings.LastIndex(s, "/"); i >= 0 {
-		return s[i+1:]
-	}
-	return s
+	return path.Base(rel.String())
 }
 
 // openFile は rel を symlink を拒否して開く。FIFO で止まらないよう O_NONBLOCK を付け、
