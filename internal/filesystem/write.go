@@ -20,31 +20,32 @@ import (
 const newFileMode = 0o644
 
 // Write は rel の内容を content で置き換え、無ければ作成する（DESIGN §9.3）。
+// 新規に作成した場合は created が true になる。
 // 親ディレクトリは作らない。途中で失敗またはキャンセルされた場合は一時ファイルを消し、
 // 元のファイルは変更しない。既存ファイルのモードは引き継ぐ。
-func (r *Root) Write(ctx context.Context, rel pathutil.RelPath, content []byte, maxBytes int) error {
+func (r *Root) Write(ctx context.Context, rel pathutil.RelPath, content []byte, maxBytes int) (created bool, err error) {
 	if err := checkName(rel); err != nil {
-		return err
+		return false, err
 	}
 	if len(content) > maxBytes {
-		return errs.New(errs.SizeLimitExceeded, "the content is larger than the write limit")
+		return false, errs.New(errs.SizeLimitExceeded, "the content is larger than the write limit")
 	}
 
 	parentFD, err := r.openParent(rel)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = unix.Close(parentFD) }()
 	name := baseName(rel)
 
-	mode, err := existingMode(parentFD, name)
+	mode, exists, err := existingMode(parentFD, name)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	tmp, err := createTemp(parentFD, mode)
 	if err != nil {
-		return err
+		return false, err
 	}
 	// 置き換えが成功するまで、一時ファイルを残さない。
 	replaced := false
@@ -56,22 +57,22 @@ func (r *Root) Write(ctx context.Context, rel pathutil.RelPath, content []byte, 
 	defer func() { _ = tmp.file.Close() }()
 
 	if _, err := tmp.file.Write(content); err != nil {
-		return errs.New(errs.Internal, "the file could not be written")
+		return false, errs.New(errs.Internal, "the file could not be written")
 	}
 	if err := tmp.file.Sync(); err != nil {
-		return errs.New(errs.Internal, "the file could not be synced")
+		return false, errs.New(errs.Internal, "the file could not be synced")
 	}
 	if err := ctx.Err(); err != nil {
-		return err
+		return false, err
 	}
 	if err := unix.Renameat(parentFD, tmp.name, parentFD, name); err != nil {
-		return errs.New(errs.Internal, "the file could not be replaced")
+		return false, errs.New(errs.Internal, "the file could not be replaced")
 	}
 	replaced = true
 
 	// 親ディレクトリの同期はベストエフォート。失敗しても書き込みは完了している。
 	_ = unix.Fsync(parentFD)
-	return nil
+	return !exists, nil
 }
 
 // openParent は rel の親ディレクトリを symlink を拒否して開き、その記述子を返す。
@@ -84,22 +85,22 @@ func (r *Root) openParent(rel pathutil.RelPath) (int, error) {
 	return fd, nil
 }
 
-// existingMode は name が既存の通常ファイルならそのモードを返し、無ければ新規作成用のモードを返す。
-// 種別の確認は fstatat(AT_SYMLINK_NOFOLLOW) で行い、symlink を置き換えない。
-func existingMode(parentFD int, name string) (os.FileMode, error) {
+// existingMode は name が既存の通常ファイルならそのモードと true を返す。無ければ新規作成用の
+// モードと false を返す。種別の確認は fstatat(AT_SYMLINK_NOFOLLOW) で行い、symlink を置き換えない。
+func existingMode(parentFD int, name string) (os.FileMode, bool, error) {
 	var st unix.Stat_t
 	err := unix.Fstatat(parentFD, name, &st, unix.AT_SYMLINK_NOFOLLOW)
 	switch {
 	case errors.Is(err, unix.ENOENT):
-		return newFileMode, nil
+		return newFileMode, false, nil
 	case err != nil:
-		return 0, errs.New(errs.Internal, "the file could not be inspected")
+		return 0, false, errs.New(errs.Internal, "the file could not be inspected")
 	case st.Mode&unix.S_IFMT == unix.S_IFDIR:
-		return 0, errs.New(errs.IsDirectory, "the path is a directory")
+		return 0, false, errs.New(errs.IsDirectory, "the path is a directory")
 	case st.Mode&unix.S_IFMT != unix.S_IFREG:
-		return 0, errs.New(errs.UnsupportedFileType, "only regular files are replaced")
+		return 0, false, errs.New(errs.UnsupportedFileType, "only regular files are replaced")
 	default:
-		return os.FileMode(st.Mode & 0o777), nil
+		return os.FileMode(st.Mode & 0o777), true, nil
 	}
 }
 
