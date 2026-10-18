@@ -56,11 +56,10 @@ a proxy that blocks known-malicious modules. To do the same locally:
 export GOPROXY=https://golang.flatt.tech   # no ",direct" fallback
 ```
 
-## Usage (planned)
+## Usage
 
-```sh
-agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
-```
+See the [usage guide](docs/usage.md) for building, running the checks and
+writing a policy.
 
 ## License
 
