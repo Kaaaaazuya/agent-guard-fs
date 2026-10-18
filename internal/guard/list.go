@@ -18,8 +18,11 @@ type ListResult struct {
 
 // List は path の直下のエントリを返す。path に list が許可されていなければ拒否する。
 // 各エントリは、list を許可されている場合だけ返す。例えば deny された src/.env は含めない。
-func (g *Guard) List(ctx context.Context, path string) (ListResult, error) {
-	rel, err := g.authorize(ctx, policy.List, path)
+func (g *Guard) List(ctx context.Context, path string) (res ListResult, err error) {
+	a := g.begin(policy.List)
+	defer func() { g.finish(a, err) }()
+
+	rel, err := g.authorize(ctx, a, path)
 	if err != nil {
 		return ListResult{}, err
 	}
