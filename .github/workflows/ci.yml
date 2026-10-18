@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # go.mod pins `toolchain go1.27.2`; without this the Go 1.26 job would
+  # silently switch to that toolchain and never test 1.26.
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, go ${{ matrix.go }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go: ["1.26.x", "1.27.x"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+      # Fetch modules through Takumi Guard (no `direct` fallback).
+      - uses: flatt-security/setup-takumi-guard-golang@v1
+      - run: go mod download
+      - run: make fmt-check
+      - run: make vet
+      - run: make test
+      - run: make build
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.x"
+      - uses: flatt-security/setup-takumi-guard-golang@v1
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.x"
+      - uses: flatt-security/setup-takumi-guard-golang@v1
+      - run: make vuln
