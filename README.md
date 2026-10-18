@@ -1,5 +1,7 @@
 # AgentGuard FS
 
+English | [日本語](README.ja.md)
+
 AgentGuard FS is an [MCP](https://modelcontextprotocol.io/) server that gives
 AI agents local file operations (`read_file`, `write_file`, `list_files`,
 `delete_file`) and allows or denies each one according to a policy written in
