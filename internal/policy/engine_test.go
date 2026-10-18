@@ -172,3 +172,36 @@ func TestEvaluate(t *testing.T) {
 		})
 	}
 }
+
+// サンプルポリシーの判定が DESIGN §7.1 の意図どおりになることを確かめる。
+func TestExamplePolicyDecisions(t *testing.T) {
+	p, err := LoadFile("../../examples/basic/policy.cue")
+	if err != nil {
+		t.Fatalf("LoadFile: %v", err)
+	}
+	e := NewEngine(p)
+	tests := []struct {
+		action  Action
+		path    string
+		allowed bool
+	}{
+		{Write, "src/main.go", true},
+		{Read, "docs/readme.md", true},
+		{Write, "docs/readme.md", false},
+		{Read, "src/.env", false},
+		{Read, ".ENV", false},
+		{Read, "go.mod", true},
+		{Write, "go.mod", false},
+		{Delete, "go.mod", false},
+		{Read, ".git/config", false},
+		{Write, ".git/hooks/pre-commit", false},
+		{List, ".", true},
+		{List, "src", true},
+	}
+	for _, tt := range tests {
+		got := e.Evaluate(tt.action, rel(t, tt.path))
+		if got.Allowed != tt.allowed {
+			t.Errorf("Evaluate(%s, %q) allowed = %v (rule %q), want %v", tt.action, tt.path, got.Allowed, got.Rule, tt.allowed)
+		}
+	}
+}
