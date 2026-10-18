@@ -23,7 +23,7 @@ type RelPath struct {
 // the root), "\" and ":", NUL and other control characters, and invalid
 // UTF-8. "./a", "a//b" and a trailing "/" are normalized.
 func Parse(s string) (RelPath, error) {
-	elems, err := split(s)
+	elems, err := split(s, checkLiteral)
 	if err != nil {
 		return RelPath{}, err
 	}
@@ -37,8 +37,8 @@ func (r RelPath) String() string { return r.p }
 func (r RelPath) IsRoot() bool { return r.p == "." }
 
 // split validates s and returns its elements with "." and empty elements
-// removed.
-func split(s string) ([]string, error) {
+// removed. check validates each remaining element.
+func split(s string, check func(string) error) ([]string, error) {
 	if s == "" {
 		return nil, invalid("path is empty")
 	}
@@ -64,10 +64,17 @@ func split(s string) ([]string, error) {
 		case "..":
 			return nil, invalid(`path must not contain ".."`)
 		}
+		if err := check(e); err != nil {
+			return nil, err
+		}
 		elems = append(elems, e)
 	}
 	return elems, nil
 }
+
+// checkLiteral accepts any element: in an input path, "*" and "?" are
+// ordinary file name characters.
+func checkLiteral(string) error { return nil }
 
 func join(elems []string) string {
 	if len(elems) == 0 {
