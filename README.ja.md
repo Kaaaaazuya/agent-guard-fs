@@ -53,11 +53,9 @@ CI は、既知の悪性モジュールを遮断するプロキシ
 export GOPROXY=https://golang.flatt.tech   # ",direct" は付けない
 ```
 
-## 使い方（予定）
+## 使い方
 
-```sh
-agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
-```
+ビルド、チェックの実行、ポリシーの書き方は [使い方ガイド](docs/usage.ja.md) を参照してください。
 
 ## ライセンス
 
