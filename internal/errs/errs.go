@@ -1,12 +1,11 @@
-// Package errs defines the stable error codes that AgentGuard FS reports to
-// MCP clients. Every layer returns these codes so that the MCP layer only
-// has to translate them, never to guess what a lower-level error means.
+// errs パッケージは、AgentGuard FS が MCP クライアントに返す安定したエラーコードを定義する。
+// 各層がこのコードを返すことで、MCP 層は変換するだけでよく、下位層のエラーの意味を
+// 推測せずに済む。
 package errs
 
 import "errors"
 
-// Code is a stable, machine-readable error code. Its string value is part
-// of the public tool contract and must not change.
+// Code は機械可読な安定したエラーコード。文字列値はツールの公開仕様の一部なので変更しない。
 type Code string
 
 const (
@@ -22,8 +21,8 @@ const (
 	Internal            Code = "internal_error"
 )
 
-// Error is an error carrying a Code. Message must not contain absolute
-// paths, file contents, or secrets, because it may be shown to the agent.
+// Error は Code を持つエラー。Message はエージェントに表示されうるため、絶対パス・
+// ファイル内容・秘密情報を含めない。
 type Error struct {
 	Code    Code
 	Message string
@@ -33,13 +32,13 @@ func (e *Error) Error() string {
 	return string(e.Code) + ": " + e.Message
 }
 
-// New returns an *Error with the given code and message.
+// New は指定したコードとメッセージの *Error を返す。
 func New(code Code, message string) *Error {
 	return &Error{Code: code, Message: message}
 }
 
-// CodeOf returns the Code of the first *Error in err's chain, or Internal
-// if there is none, so that unexpected errors fail closed.
+// CodeOf は err のチェーンで最初に見つかった *Error の Code を返す。見つからなければ
+// Internal を返し、想定外のエラーを安全側（拒否）に倒す。
 func CodeOf(err error) Code {
 	if e, ok := errors.AsType[*Error](err); ok {
 		return e.Code

@@ -59,7 +59,7 @@ func TestParsePatternRejects(t *testing.T) {
 	}
 }
 
-// Glob characters are ordinary characters in input paths.
+// 入力パスではグロブ文字も普通の文字として扱う。
 func TestParseAcceptsGlobCharacters(t *testing.T) {
 	for _, in := range []string{"a*b", "**", "what?.txt", "[x]", "{y}"} {
 		if _, err := Parse(in); err != nil {

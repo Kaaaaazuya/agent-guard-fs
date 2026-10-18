@@ -2,17 +2,15 @@ package pathutil
 
 import "strings"
 
-// Pattern is a validated, normalized rule path (DESIGN §6.3). It follows
-// the same rules as RelPath and may additionally contain the glob
-// characters "*" and "?". "**" is allowed only as a whole element.
+// Pattern は検証・正規化済みのルールパス（DESIGN §6.3）。RelPath と同じ規則に従い、
+// 加えてグロブ文字 "*" と "?" を含められる。"**" は要素全体としてのみ使える。
 type Pattern struct {
 	p string
 }
 
-// ParsePattern validates a rule path from the policy. Besides the RelPath
-// rules, it rejects "[", "]", "{" and "}" so that no glob syntax beyond
-// "*", "**" and "?" can be written, and "**" mixed with other characters
-// in one element (such as "a**").
+// ParsePattern はポリシーのルールパスを検証する。RelPath の規則に加え、"*"・"**"・"?"
+// 以外のグロブ構文を書けないよう "["、"]"、"{"、"}" を拒否し、1 つの要素内で "**" と
+// 他の文字を混ぜたもの（"a**" など）も拒否する。
 func ParsePattern(s string) (Pattern, error) {
 	elems, err := split(s, checkPatternElement)
 	if err != nil {
@@ -21,7 +19,7 @@ func ParsePattern(s string) (Pattern, error) {
 	return Pattern{p: join(elems)}, nil
 }
 
-// String returns the normalized pattern.
+// String は正規化済みのパターンを返す。
 func (p Pattern) String() string { return p.p }
 
 func checkPatternElement(e string) error {

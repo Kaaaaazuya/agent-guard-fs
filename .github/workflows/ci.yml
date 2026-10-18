@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 env:
-  # go.mod pins `toolchain go1.27.2`; without this the Go 1.26 job would
-  # silently switch to that toolchain and never test 1.26.
+  # go.mod の `toolchain go1.27.2` により、これがないと Go 1.26 のジョブが
+  # 黙ってそのツールチェーンに切り替わり、1.26 を検証できない。
   GOTOOLCHAIN: local
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
-      # Fetch modules through Takumi Guard (no `direct` fallback).
+      # 依存は Takumi Guard 経由で取得する（`direct` へのフォールバックなし）。
       - uses: flatt-security/setup-takumi-guard-golang@v1
       - run: go mod download
       - uses: go-task/setup-task@v2

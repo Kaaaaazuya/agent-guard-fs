@@ -1,6 +1,6 @@
-// Package pathutil validates and normalizes paths relative to the root
-// (DESIGN §6.4). Policy and filesystem code accept only the types defined
-// here, so no unchecked string path crosses a package boundary.
+// pathutil パッケージは、ルートからの相対パスを検証・正規化する（DESIGN §6.4）。
+// policy と filesystem はここで定義する型だけを受け取るので、未検証の文字列パスが
+// パッケージ境界を越えることはない。
 package pathutil
 
 import (
@@ -11,17 +11,15 @@ import (
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/errs"
 )
 
-// RelPath is a validated, normalized path relative to the root. Its
-// elements are separated by "/", and the root itself is ".". The zero
-// value is not valid; use Parse.
+// RelPath は検証・正規化済みのルートからの相対パス。要素の区切りは "/" で、
+// ルート自身は "." で表す。ゼロ値は無効なので Parse で生成する。
 type RelPath struct {
 	p string
 }
 
-// Parse validates s and returns it in normalized form. It rejects empty
-// and absolute paths, any ".." element (even one that would stay inside
-// the root), "\" and ":", NUL and other control characters, and invalid
-// UTF-8. "./a", "a//b" and a trailing "/" are normalized.
+// Parse は s を検証し、正規化した形で返す。空文字列、絶対パス、".." を含むパス
+// （ルート内に収まる場合も含む）、"\" と ":"、NUL などの制御文字、不正な UTF-8 を拒否する。
+// "./a"、"a//b"、末尾の "/" は正規化する。
 func Parse(s string) (RelPath, error) {
 	elems, err := split(s, checkLiteral)
 	if err != nil {
@@ -30,14 +28,13 @@ func Parse(s string) (RelPath, error) {
 	return RelPath{p: join(elems)}, nil
 }
 
-// String returns the normalized path.
+// String は正規化済みのパスを返す。
 func (r RelPath) String() string { return r.p }
 
-// IsRoot reports whether r is the root itself.
+// IsRoot は r がルート自身かどうかを返す。
 func (r RelPath) IsRoot() bool { return r.p == "." }
 
-// split validates s and returns its elements with "." and empty elements
-// removed. check validates each remaining element.
+// split は s を検証し、"." と空の要素を除いた要素の列を返す。残った各要素は check で検証する。
 func split(s string, check func(string) error) ([]string, error) {
 	if s == "" {
 		return nil, invalid("path is empty")
@@ -72,8 +69,7 @@ func split(s string, check func(string) error) ([]string, error) {
 	return elems, nil
 }
 
-// checkLiteral accepts any element: in an input path, "*" and "?" are
-// ordinary file name characters.
+// checkLiteral はどの要素も受け付ける。入力パスでは "*" や "?" も普通のファイル名の文字である。
 func checkLiteral(string) error { return nil }
 
 func join(elems []string) string {
