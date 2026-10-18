@@ -1,8 +1,7 @@
 version: "2"
 
 run:
-  # Lint against the minimum supported language version (go.mod `go`),
-  # not the `toolchain` line.
+  # `toolchain` 行ではなく、サポートする最小の言語バージョン（go.mod の `go`）で検査する。
   go: "1.26"
 
 linters:

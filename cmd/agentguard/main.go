@@ -1,5 +1,5 @@
-// Command agentguard is an MCP server that exposes local file operations
-// gated by a CUE allow/deny policy.
+// agentguard コマンドは、CUE の allow/deny ポリシーで制御したローカルファイル操作を
+// 提供する MCP サーバーである。
 package main
 
 import (
@@ -11,8 +11,8 @@ func main() {
 	os.Exit(run(os.Args[1:]))
 }
 
-// run is the entry point used by main and tests. Nothing is wired up yet,
-// so it always refuses to start rather than serving without a policy.
+// run は main とテストから呼ぶエントリーポイント。まだ何も組み込んでいないため、
+// ポリシーなしで動作させず、常に起動を拒否する。
 func run(args []string) int {
 	_ = args
 	fmt.Fprintln(os.Stderr, "agentguard: not implemented yet")
