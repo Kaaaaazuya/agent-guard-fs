@@ -102,3 +102,31 @@ func TestLoadErrorShowsPosition(t *testing.T) {
 		t.Errorf("error = %v, want it to point at my-policy.cue:3", err)
 	}
 }
+
+func TestLoadValidatesRulePaths(t *testing.T) {
+	const limits = `limits: {maxReadBytes: 1, maxWriteBytes: 1}`
+	rejects := map[string]string{
+		"parent":            "src/../.env",
+		"bracket":           "[ab]",
+		"brace":             "{a,b}",
+		"partial **":        "src/a**",
+		"control character": "a\\tb",
+	}
+	for name, path := range rejects {
+		t.Run(name, func(t *testing.T) {
+			src := `version: 1, rules: r: {path: "` + path + `", actions: ["read"], effect: "allow"}, ` + limits
+			_, err := Load("policy.cue", []byte(src))
+			if err == nil || !strings.Contains(err.Error(), `rule "r"`) {
+				t.Errorf("Load(path %q) error = %v, want an error naming rule r", path, err)
+			}
+		})
+	}
+
+	p, err := Load("policy.cue", []byte(`version: 1, rules: r: {path: "./src//", actions: ["read"], effect: "allow"}, `+limits))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := p.rules[0].Path.String(); got != "src" {
+		t.Errorf("rule path = %q, want normalized %q", got, "src")
+	}
+}

@@ -11,6 +11,8 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 	cueerrors "cuelang.org/go/cue/errors"
+
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
 )
 
 //go:embed schema/policy.cue
@@ -37,7 +39,7 @@ const (
 // Rule は 1 つのルール。Name はポリシー内のマップのキー。
 type Rule struct {
 	Name      string
-	Path      string
+	Path      pathutil.Pattern
 	Actions   []Action
 	Effect    Effect
 	Recursive bool
@@ -107,9 +109,14 @@ func Load(filename string, src []byte) (*Policy, error) {
 
 	p := &Policy{limits: Limits(raw.Limits)}
 	for name, r := range raw.Rules {
+		// スキーマでは表しきれない規則（".." やグロブ構文）はここで pathutil により検証する。
+		path, err := pathutil.ParsePattern(r.Path)
+		if err != nil {
+			return nil, fmt.Errorf("invalid policy: rule %q: %w", name, err)
+		}
 		p.rules = append(p.rules, Rule{
 			Name:      name,
-			Path:      r.Path,
+			Path:      path,
 			Actions:   r.Actions,
 			Effect:    r.Effect,
 			Recursive: r.Recursive,
