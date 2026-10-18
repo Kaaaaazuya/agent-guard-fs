@@ -8,5 +8,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Project skeleton: Go module, `agentguard` command stub, Makefile, CI on
+- Project skeleton: Go module, `agentguard` command stub, Taskfile, CI on
   Linux and macOS with Go 1.26 and 1.27, golangci-lint and govulncheck.

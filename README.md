@@ -35,12 +35,15 @@ directory and write the policy are trusted; the agent is not.
 
 ## Build
 
+Tasks are defined in `Taskfile.yml` and run with [Task](https://taskfile.dev/) v3.
+
 ```sh
-make build        # writes bin/agentguard
-make all          # fmt-check, vet, lint, test, build
+task build        # writes bin/agentguard
+task              # fmt-check, vet, lint, test, build
+task --list       # show all tasks
 ```
 
-`make lint` needs [golangci-lint](https://golangci-lint.run/) v2.
+`task lint` needs [golangci-lint](https://golangci-lint.run/) v2.
 
 ### Fetching dependencies through Takumi Guard (recommended)
 

@@ -1,0 +1,58 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+  BIN: bin/agentguard
+  GOVULNCHECK_VERSION: v1.9.0
+
+tasks:
+  default:
+    desc: Run every check and build
+    cmds:
+      - task: fmt-check
+      - task: vet
+      - task: lint
+      - task: test
+      - task: build
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - gofmt -w .
+
+  fmt-check:
+    desc: Fail if any Go file needs gofmt
+    cmds:
+      - |
+        out="$(gofmt -l .)"
+        if [ -n "$out" ]; then echo "gofmt needed:"; echo "$out"; exit 1; fi
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: Run golangci-lint (v2)
+    cmds:
+      - golangci-lint run
+
+  vuln:
+    desc: Run govulncheck
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@{{.GOVULNCHECK_VERSION}} ./...
+
+  test:
+    desc: Run tests with the race detector
+    cmds:
+      - go test -race ./...
+
+  build:
+    desc: Build bin/agentguard
+    cmds:
+      - go build -trimpath -o {{.BIN}} ./cmd/agentguard
+
+  clean:
+    desc: Remove build output
+    cmds:
+      - rm -rf bin
