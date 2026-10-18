@@ -18,15 +18,23 @@ func TestWriteCreatesAndReplaces(t *testing.T) {
 	root, dir := newRoot(t)
 	ctx := context.Background()
 
-	if err := root.Write(ctx, relOf(t, "new.txt"), []byte("one"), 100); err != nil {
+	created, err := root.Write(ctx, relOf(t, "new.txt"), []byte("one"), 100)
+	if err != nil {
 		t.Fatalf("Write(new) error = %v", err)
+	}
+	if !created {
+		t.Error("Write(new) created = false, want true")
 	}
 	if got := readFile(t, filepath.Join(dir, "new.txt")); got != "one" {
 		t.Errorf("new file = %q, want %q", got, "one")
 	}
 
-	if err := root.Write(ctx, relOf(t, "new.txt"), []byte("two"), 100); err != nil {
+	created, err = root.Write(ctx, relOf(t, "new.txt"), []byte("two"), 100)
+	if err != nil {
 		t.Fatalf("Write(replace) error = %v", err)
+	}
+	if created {
+		t.Error("Write(replace) created = true, want false")
 	}
 	if got := readFile(t, filepath.Join(dir, "new.txt")); got != "two" {
 		t.Errorf("replaced file = %q, want %q", got, "two")
@@ -43,7 +51,7 @@ func TestWritePreservesExistingMode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := root.Write(context.Background(), relOf(t, "script.sh"), []byte("new"), 100); err != nil {
+	if _, err := root.Write(context.Background(), relOf(t, "script.sh"), []byte("new"), 100); err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}
 	info, err := os.Stat(path)
@@ -82,7 +90,7 @@ func TestWriteErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := root.Write(ctx, relOf(t, tt.path), []byte(tt.content), tt.max)
+			_, err := root.Write(ctx, relOf(t, tt.path), []byte(tt.content), tt.max)
 			wantCode(t, err, tt.code)
 		})
 	}
@@ -124,7 +132,7 @@ func TestWriteRefusesSymlinks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := root.Write(ctx, relOf(t, tt.path), []byte("pwned"), 100)
+			_, err := root.Write(ctx, relOf(t, tt.path), []byte("pwned"), 100)
 			wantCode(t, err, errs.UnsupportedFileType)
 		})
 	}
@@ -143,7 +151,7 @@ func TestWriteCancelledLeavesOriginal(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := root.Write(ctx, relOf(t, "file"), []byte("new"), 100)
+	_, err := root.Write(ctx, relOf(t, "file"), []byte("new"), 100)
 	if err == nil {
 		t.Fatal("Write(cancelled) error = nil, want error")
 	}
