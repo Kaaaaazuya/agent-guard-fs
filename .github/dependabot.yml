@@ -1,7 +1,13 @@
 version: 2
+registries:
+  takumi-guard:
+    type: goproxy-server
+    url: https://golang.flatt.tech
 updates:
   - package-ecosystem: gomod
     directory: /
+    registries:
+      - takumi-guard
     schedule:
       interval: weekly
     cooldown:
