@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path"
-	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -14,13 +13,9 @@ import (
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
 )
 
-// tempPrefix は書き込み途中の一時ファイルの名前の接頭辞（DESIGN §9.3）。
-// この名前のパスは、ポリシーにかかわらず全操作で拒否し、list にも出さない。
-const tempPrefix = ".agentguard-tmp-"
-
 // checkName は、最後の要素が一時ファイルの名前でないことを確認する。
 func checkName(rel pathutil.RelPath) error {
-	if strings.HasPrefix(baseName(rel), tempPrefix) {
+	if IsTempName(rel) {
 		return errs.New(errs.InvalidArgument, "the name is reserved for temporary files")
 	}
 	return nil
