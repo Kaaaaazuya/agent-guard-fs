@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Policy `tests`: expected decisions that run when the policy is loaded and
+  stop startup if any of them differs.
+- `agentguard explain`: shows how a policy decides one operation and which rule
+  decides it, without opening a root.
+- Startup and `explain` warn about allow rules that a deny rule always overrides.
+
+## [0.1.0] - 2026-10-19
+
+### Added
+
 - Project skeleton: Go module, `agentguard` command stub, Taskfile, CI on
   Linux and macOS with Go 1.26 and 1.27, golangci-lint and govulncheck.
 - CUE policy with `read`, `write`, `delete`, and `list` rules, `recursive`
@@ -24,9 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   outside the root, and startup fails closed if the kernel cannot open
   without following symlinks.
 - Sample project and policy in `examples/basic`, covered by a test.
-- Policy `tests`: expected decisions that run when the policy is loaded and
-  stop startup if any of them differs.
-- `agentguard explain`: shows how a policy decides one operation and which rule
-  decides it, without opening a root.
-- Startup and `explain` warn about allow rules that a deny rule always overrides.
 - Documentation for usage, policy, and security, in English and Japanese.
