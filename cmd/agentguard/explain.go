@@ -42,7 +42,9 @@ func runExplain(args []string, stdout io.Writer) int {
 		fmt.Fprintln(os.Stderr, "agentguard:", err)
 		return 1
 	}
-	d := policy.NewEngine(p).Evaluate(action, path)
+	engine := policy.NewEngine(p)
+	warnShadowed(os.Stderr, engine)
+	d := engine.Evaluate(action, path)
 
 	verdict, rule := "deny", d.Rule
 	if d.Allowed {
