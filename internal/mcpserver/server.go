@@ -32,6 +32,7 @@ func New(g *guard.Guard) *mcp.Server {
 	srv.AddTool(readFileTool(), s.readFile)
 	srv.AddTool(writeFileTool(), s.writeFile)
 	srv.AddTool(listFilesTool(), s.listFiles)
+	srv.AddTool(deleteFileTool(), s.deleteFile)
 	return srv
 }
 
