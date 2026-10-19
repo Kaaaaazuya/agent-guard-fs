@@ -174,6 +174,39 @@ the root returns `docs`, `go.mod`, and `src`, but not `.env`.
 If nothing is allowed below a directory, its children do not appear in
 `list_files`, even though the directory itself is listed.
 
+## Sharing values between rules
+
+The policy file is ordinary CUE, so a value that several rules need can be
+written once. Fields that start with `_` are hidden: CUE accepts them but
+they are not part of the policy. The sample builds its deny rules from one
+map:
+
+```cue
+_allActions: ["read", "write", "delete", "list"]
+
+_hidden: {
+	"env-deny": path: "**/.env*"
+	"git-deny": {
+		path:      ".git"
+		recursive: true
+	}
+}
+
+rules: {
+	for name, h in _hidden {
+		(name): h & {
+			actions: _allActions
+			effect:  "deny"
+		}
+	}
+}
+```
+
+This produces the same `env-deny` and `git-deny` rules as writing them out.
+Adding a path to `_hidden` denies every action on it. The result is still
+checked against the schema, so a rule built this way must be valid like any
+other.
+
 ## Writing a policy
 
 - Start with the smallest set of allows. Everything else is denied by default.
