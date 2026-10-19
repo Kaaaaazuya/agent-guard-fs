@@ -4,6 +4,8 @@ version: "3"
 vars:
   BIN: bin/agentguard
   GOVULNCHECK_VERSION: v1.9.0
+  # go.mod の cuelang.org/go と同じバージョンにそろえる。
+  CUE_VERSION: v0.17.1
 
 tasks:
   default:
@@ -41,6 +43,11 @@ tasks:
     desc: Run govulncheck
     cmds:
       - go run golang.org/x/vuln/cmd/govulncheck@{{.GOVULNCHECK_VERSION}} ./...
+
+  generate:
+    desc: Regenerate the Go types for the policy schema
+    cmds:
+      - go run cuelang.org/go/cmd/cue@{{.CUE_VERSION}} exp gengotypes ./internal/policy/schema
 
   test:
     desc: Run tests with the race detector
