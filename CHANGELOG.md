@@ -24,4 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   outside the root, and startup fails closed if the kernel cannot open
   without following symlinks.
 - Sample project and policy in `examples/basic`, covered by a test.
+- Policy `tests`: expected decisions that run when the policy is loaded and
+  stop startup if any of them differs.
 - Documentation for usage, policy, and security, in English and Japanese.
