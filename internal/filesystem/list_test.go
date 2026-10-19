@@ -36,7 +36,7 @@ func TestList(t *testing.T) {
 		{Name: "a.txt", Type: "file"},
 		{Name: "b.txt", Type: "file"},
 		{Name: "pipe", Type: "other"},
-		{Name: "src", Type: "directory"},
+		{Name: "src", Type: "dir"},
 		{Name: "up", Type: "symlink"},
 	}
 	if !reflect.DeepEqual(got, want) {
