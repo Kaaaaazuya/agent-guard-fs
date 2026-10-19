@@ -9,6 +9,19 @@ limits: {
 	maxWriteBytes: 1048576
 }
 
+_allActions: ["read", "write", "delete", "list"]
+
+_hidden: {
+	// どの階層の .env と .env.* も拒否する。
+	"env-deny": path: "**/.env*"
+
+	// .git/ の hooks や config の書き換えはコード実行につながるため拒否する。
+	"git-deny": {
+		path:      ".git"
+		recursive: true
+	}
+}
+
 rules: {
 	"root-list": {
 		path: "."
@@ -45,19 +58,12 @@ rules: {
 		effect: "allow"
 	}
 
-	// どの階層の .env と .env.* も拒否する。
-	"env-deny": {
-		path: "**/.env*"
-		actions: ["read", "write", "delete", "list"]
-		effect: "deny"
-	}
-
-	// .git/ の hooks や config の書き換えはコード実行につながるため拒否する。
-	"git-deny": {
-		path: ".git"
-		actions: ["read", "write", "delete", "list"]
-		effect:    "deny"
-		recursive: true
+	// 隠すパスは _hidden にまとめ、すべての操作を拒否する。
+	for name, h in _hidden {
+		(name): h & {
+			actions: _allActions
+			effect:  "deny"
+		}
 	}
 
 	"go-mod-deny": {
