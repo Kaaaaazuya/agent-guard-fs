@@ -12,6 +12,7 @@ tasks:
     desc: Run every check and build
     cmds:
       - task: fmt-check
+      - task: generate-check
       - task: vet
       - task: lint
       - task: test
@@ -48,6 +49,17 @@ tasks:
     desc: Regenerate the Go types for the policy schema
     cmds:
       - go run cuelang.org/go/cmd/cue@{{.CUE_VERSION}} exp gengotypes ./internal/policy/schema
+
+  generate-check:
+    desc: Fail if the generated Go types are out of date
+    cmds:
+      - task: generate
+      - |
+        if [ -n "$(git status --porcelain -- internal/policy/schema)" ]; then
+          echo "internal/policy/schema is out of date; run 'task generate' and commit the result:"
+          git --no-pager diff -- internal/policy/schema
+          exit 1
+        fi
 
   test:
     desc: Run tests with the race detector

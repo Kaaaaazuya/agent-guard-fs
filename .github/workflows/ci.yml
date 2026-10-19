@@ -98,6 +98,22 @@ jobs:
         with:
           version: v2.15.0
 
+  # スキーマを変えたのに生成物を更新し忘れたら、ここで止める。
+  generate:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.x"
+      - uses: flatt-security/setup-takumi-guard-golang@02545d3425218766aac4dca114dcc3f6eaa0df4a # v1.3.0
+      - uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        with:
+          version: 3.54.0
+      - run: task generate-check
+
   vuln:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
