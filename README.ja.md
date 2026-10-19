@@ -6,7 +6,8 @@ AgentGuard FS は、AI エージェントにローカルファイル操作（`re
 `list_files`、`delete_file`）を提供し、[CUE](https://cuelang.org/) で書いたポリシーに従って
 操作ごとに許可・拒否する [MCP](https://modelcontextprotocol.io/) サーバーです。
 
-> **ステータス:** 開発初期です。サーバーはまだ動作しません。
+> **ステータス:** リリース前です。4 つのツールはすべてポリシーのもとで動作しますが、まだバージョンを付けていません。
+> [変更履歴](CHANGELOG.md) を参照してください。
 
 ## 設計の概要
 
@@ -53,11 +54,25 @@ CI は、既知の悪性モジュールを遮断するプロキシ
 export GOPROXY=https://golang.flatt.tech   # ",direct" は付けない
 ```
 
-## 使い方（予定）
+## クイックスタート
+
+サーバーをビルドして、サンプルのプロジェクトに対して起動します。ポリシーファイルは、
+`--root` で指定したルートの外に置く必要があります。
 
 ```sh
-agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
+task build
+bin/agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
 ```
+
+サーバーは標準入出力で MCP を話すため、起動するのは通常 MCP クライアントです。
+サンプルのポリシーでは、エージェントは `src/` を読み書きでき、`docs/` と `go.mod` を読めますが、
+`.env` ファイルと `.git/` は見えません。
+
+## ドキュメント
+
+- [使い方](docs/usage.ja.md): ビルド、コマンドラインのフラグ、起動拒否、MCP クライアントの設定、トラブルシューティング。
+- [ポリシー](docs/policy.ja.md): ルールのフィールド、操作、グロブ、拒否優先の照合、例。
+- [セキュリティ](docs/security.ja.md): 脅威モデル、防ぐもの、残存リスク、対応する OS の最小バージョン、エラーコード。
 
 ## ライセンス
 

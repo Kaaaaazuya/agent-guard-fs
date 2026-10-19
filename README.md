@@ -7,7 +7,8 @@ AI agents local file operations (`read_file`, `write_file`, `list_files`,
 `delete_file`) and allows or denies each one according to a policy written in
 [CUE](https://cuelang.org/).
 
-> **Status:** early development. The server is not functional yet.
+> **Status:** pre-release. All four tools work under a policy, but no version
+> has been tagged yet. See the [changelog](CHANGELOG.md).
 
 ## Design in brief
 
@@ -56,11 +57,28 @@ a proxy that blocks known-malicious modules. To do the same locally:
 export GOPROXY=https://golang.flatt.tech   # no ",direct" fallback
 ```
 
-## Usage (planned)
+## Quick start
+
+Build the binary, then run it against the sample project. The policy file
+must stay outside the root you pass to `--root`.
 
 ```sh
-agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
+task build
+bin/agentguard --root ./examples/basic/project --policy ./examples/basic/policy.cue
 ```
+
+The server speaks MCP over standard input and output, so an MCP client starts
+it rather than you. The sample policy lets the agent read and write `src/`,
+read `docs/` and `go.mod`, and never see `.env` files or `.git/`.
+
+## Documentation
+
+- [Usage](docs/usage.md): build, command-line flags, startup refusals, MCP
+  client configuration, and troubleshooting.
+- [Policy](docs/policy.md): rule fields, actions, globs, deny-first matching,
+  and examples.
+- [Security](docs/security.md): threat model, protections, residual risks,
+  minimum OS versions, and error codes.
 
 ## License
 
