@@ -33,11 +33,25 @@ To fetch modules through the Takumi Guard proxy the CI uses:
 export GOPROXY=https://golang.flatt.tech   # no ",direct" fallback
 ```
 
-Run every check (format, vet, lint, tests with the race detector, build):
+Run every check (format, generated code, vet, lint, tests with the race
+detector, build):
 
 ```sh
 task
 ```
+
+The Go types that decode a policy are generated from the CUE schema in
+`internal/policy/schema/policy.cue`. After changing the schema, regenerate them
+and commit the result in a separate commit:
+
+```sh
+task generate
+```
+
+`task generate-check`, which CI runs, fails if the generated file is out of
+date. The generator is `cue` at the same version as `cuelang.org/go` in
+`go.mod` (`CUE_VERSION` in `Taskfile.yml`); keep the two in step when you
+update the module.
 
 ## Command line
 
@@ -61,12 +75,40 @@ Exit codes:
 | 1 | Startup or runtime failure. The reason is printed to standard error. |
 | 2 | Invalid arguments. The usage line is printed to standard error. |
 
+### Explaining a decision
+
+```sh
+agentguard explain --policy <file> <read|write|delete|list> <path>
+```
+
+This prints how the policy decides one operation and which rule decided it.
+It loads the policy the same way the server does, so a policy that fails
+validation or its own `tests` is refused, but it never opens a root and does
+not start a server. Standard output carries the answer:
+
+```text
+$ agentguard explain --policy examples/basic/policy.cue read src/.ENV
+deny
+action: read
+path:   src/.ENV
+rule:   env-deny
+reason: deny rule matched
+```
+
+The first line is `allow` or `deny`. `rule` is `(none)` when nothing allowed
+the operation (default deny). The path is normalized as it is for a request,
+so `./src//a` is shown as `src/a`. The exit code is 0 whenever a decision was
+made, including a denial; it is 1 if the policy cannot be loaded and 2 for
+invalid arguments or a path the server would reject.
+
 ## Startup order and refusals
 
 At startup the server runs these steps in order and stops at the first failure:
 
 1. Load and validate the policy. A bad policy (unknown field, invalid action or
-   effect, out-of-range limit, and so on) refuses to start.
+   effect, out-of-range limit, a failing `tests` entry, and so on) refuses to
+   start. An allow rule that a deny rule always overrides only prints a
+   [warning](policy.md#rules-that-never-take-effect).
 2. Open the root directory and check that the kernel can open files without
    following symlinks (see below).
 3. Resolve symlinks in both the root and the policy path, then check that the

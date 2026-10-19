@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -35,7 +37,17 @@ func startup(rootDir, policyFile string) (*guard.Guard, error) {
 		_ = root.Close()
 		return nil, errPolicyInRoot
 	}
-	return guard.New(policy.NewEngine(p), root, p.Limits(), audit.NewStderr()), nil
+	engine := policy.NewEngine(p)
+	warnShadowed(os.Stderr, engine)
+	return guard.New(engine, root, p.Limits(), audit.NewStderr()), nil
+}
+
+// warnShadowed は、deny ルールに覆われて効かない allow ルールを w に警告として書く。
+// 起動は止めない。意図どおりでないポリシーに気づく手がかりにするだけである。
+func warnShadowed(w io.Writer, e *policy.Engine) {
+	for _, s := range e.Shadowed() {
+		_, _ = fmt.Fprintf(w, "agentguard: warning: %s\n", s)
+	}
 }
 
 // policyInRoot は、symlink を解決した後のポリシーの実体パスがルートの内側にあるかを返す。

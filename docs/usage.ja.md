@@ -32,11 +32,19 @@ CI と同じ Takumi Guard プロキシ経由で依存を取得する場合:
 export GOPROXY=https://golang.flatt.tech   # ",direct" のフォールバックは付けない
 ```
 
-すべてのチェック（フォーマット、vet、lint、レース検出付きのテスト、ビルド）を実行します。
+すべてのチェック（フォーマット、生成コード、vet、lint、レース検出付きのテスト、ビルド）を実行します。
 
 ```sh
 task
 ```
+
+ポリシーを読み込むための Go の型は、`internal/policy/schema/policy.cue` の CUE スキーマから生成します。スキーマを変えたら、型を再生成し、結果は別のコミットにしてください。
+
+```sh
+task generate
+```
+
+CI が実行する `task generate-check` は、生成されたファイルが古いと失敗します。生成に使う `cue` は、`go.mod` の `cuelang.org/go` と同じバージョン（`Taskfile.yml` の `CUE_VERSION`）です。モジュールを更新するときは、両方をそろえてください。
 
 ## コマンドライン
 
@@ -60,11 +68,31 @@ agentguard --root <dir> --policy <file>
 | 1 | 起動または実行時の失敗。理由を標準エラー出力に出す。 |
 | 2 | 引数が不正。使い方の行を標準エラー出力に出す。 |
 
+### 判定の確認
+
+```sh
+agentguard explain --policy <file> <read|write|delete|list> <path>
+```
+
+ポリシーが 1 つの操作をどう判定し、どのルールが決めたかを表示します。
+ポリシーはサーバーと同じ方法で読み込むので、検証や `tests` に失敗するポリシーは拒否されますが、ルートは開かず、サーバーも起動しません。答えは標準出力に出ます。
+
+```text
+$ agentguard explain --policy examples/basic/policy.cue read src/.ENV
+deny
+action: read
+path:   src/.ENV
+rule:   env-deny
+reason: deny rule matched
+```
+
+1 行目は `allow` か `deny` です。どの allow ルールにも一致しなかった場合（デフォルト拒否）は、`rule` が `(none)` になります。パスはリクエストと同じ規則で正規化され、`./src//a` は `src/a` と表示されます。判定できたときは拒否でも終了コードが 0 で、ポリシーを読み込めなければ 1、引数が不正、またはサーバーが拒否するパスなら 2 です。
+
 ## 起動の順序と起動拒否
 
 起動時は次の順に検査し、最初に失敗した時点で止まります。
 
-1. ポリシーを読み込んで検証する。未知のフィールド、不正な action や effect、範囲外の上限値などがあれば起動しない。
+1. ポリシーを読み込んで検証する。未知のフィールド、不正な action や effect、範囲外の上限値、失敗する `tests` などがあれば起動しない。deny ルールに必ず覆われる allow ルールは、[警告](policy.ja.md#効かないルール)を出すだけで起動する。
 2. ルートディレクトリを開き、カーネルが symlink をたどらずに開けるかを確かめる（後述）。
 3. ルートとポリシーのパスをどちらも symlink 解決してから、ポリシーがルートの内側にないかを確かめる。内側なら `the policy file must be outside the root` で起動を拒否する。この検査は symlink をたどるので、ルートの外からの symlink でも内側を指していれば拒否する。
 4. 標準入出力で MCP サーバーを開始する。

@@ -3,10 +3,13 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/policy"
 )
 
 func TestStartupAcceptsPolicyOutsideRoot(t *testing.T) {
@@ -71,4 +74,37 @@ func TestStartupAcceptsInsideSymlinkToPolicyOutsideRoot(t *testing.T) {
 		t.Fatalf("startup() error = %v", err)
 	}
 	_ = g.Close()
+}
+
+func TestWarnShadowed(t *testing.T) {
+	const src = `version: 1
+limits: {maxReadBytes: 1, maxWriteBytes: 1}
+rules: {
+	"env-read": {path: ".env", actions: ["read"], effect: "allow"}
+	"env-deny": {path: "**/.env*", actions: ["read"], effect: "deny"}
+	"src-read": {path: "src", actions: ["read"], effect: "allow", recursive: true}
+}
+`
+	p, err := policy.Load("policy.cue", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	warnShadowed(&out, policy.NewEngine(p))
+	want := `agentguard: warning: allow rule "env-read" never takes effect: everything it allows is denied by "env-deny"` + "\n"
+	if out.String() != want {
+		t.Errorf("warnShadowed wrote %q, want %q", out.String(), want)
+	}
+}
+
+func TestWarnShadowedIsQuietForTheSample(t *testing.T) {
+	p, err := policy.LoadFile(samplePolicy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	warnShadowed(&out, policy.NewEngine(p))
+	if out.Len() != 0 {
+		t.Errorf("warnShadowed wrote %q for the sample policy", out.String())
+	}
 }

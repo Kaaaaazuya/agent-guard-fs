@@ -44,7 +44,7 @@ func (g *Guard) List(ctx context.Context, path string) (res ListResult, err erro
 	}
 
 	truncated := false
-	if limit := g.limits.MaxListEntries; len(visible) > limit {
+	if limit := g.limits.MaxListEntries; int64(len(visible)) > limit {
 		visible = visible[:limit]
 		truncated = true
 	}
