@@ -92,7 +92,9 @@ invalid arguments or a path the server would reject.
 At startup the server runs these steps in order and stops at the first failure:
 
 1. Load and validate the policy. A bad policy (unknown field, invalid action or
-   effect, out-of-range limit, and so on) refuses to start.
+   effect, out-of-range limit, a failing `tests` entry, and so on) refuses to
+   start. An allow rule that a deny rule always overrides only prints a
+   [warning](policy.md#rules-that-never-take-effect).
 2. Open the root directory and check that the kernel can open files without
    following symlinks (see below).
 3. Resolve symlinks in both the root and the policy path, then check that the

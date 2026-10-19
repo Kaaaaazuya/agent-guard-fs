@@ -200,6 +200,16 @@ tests[1]: read src/.env: want deny, got allow (rule "src-read")
 
 deny ルールごとに、そのテストと、すぐ隣にある許可されたままであるべきパスのテストを書いてください。あとからルールを緩める変更が入っても、エージェントが秘密を読むときではなく、起動時に失敗します。
 
+## 効かないルール
+
+deny は allow に優先するので、allow ルールが許可するものをすべて deny ルールが覆っているなら、その allow ルールは何の役にも立ちません。サーバーと `agentguard explain` は、標準エラー出力に警告を出して、そのまま続けます。
+
+```text
+agentguard: warning: allow rule "env-read" never takes effect: everything it allows is denied by "env-deny"
+```
+
+この検査は、見つかったものは確実に効かないが、すべてを見つけるわけではありません。対象は `path` に `*` や `?` を含まない allow ルールだけで、そのルールが許可するすべての操作が拒否されているときだけ報告します。`recursive` の allow ルールでは、覆う deny ルールも配下まで及ぶ（`recursive: true`、または `**` で終わるパス）必要があります。報告されないルールが効くとは限りません。
+
 ## ポリシーの書き方
 
 - 許可は必要最小限にします。それ以外はデフォルトで拒否されます。

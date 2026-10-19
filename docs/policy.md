@@ -237,6 +237,22 @@ Write a test for each deny rule, and for one path next to it that must stay
 allowed. A later edit that loosens a rule then fails at startup instead of
 when the agent reads a secret.
 
+## Rules that never take effect
+
+Deny wins over allow, so an allow rule is useless when a deny rule already
+covers everything it allows. The server and `agentguard explain` print a
+warning to standard error and carry on:
+
+```text
+agentguard: warning: allow rule "env-read" never takes effect: everything it allows is denied by "env-deny"
+```
+
+The check is exact but not complete. It only looks at allow rules whose
+`path` has no `*` or `?`, and it reports a rule only when every action it
+grants is denied. For a `recursive` allow rule, the covering deny rule must
+also reach everything below (`recursive: true`, or a path ending in `**`). A
+rule that is not reported can still be useless.
+
 ## Writing a policy
 
 - Start with the smallest set of allows. Everything else is denied by default.
