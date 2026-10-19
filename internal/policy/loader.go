@@ -13,13 +13,14 @@ import (
 	cueerrors "cuelang.org/go/cue/errors"
 
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/policy/schema"
 )
 
 //go:embed schema/policy.cue
 var schemaSource []byte
 
-// Action はポリシーで扱う操作の種別。
-type Action string
+// Action はポリシーで扱う操作の種別。スキーマから生成した型をそのまま使う。
+type Action = schema.Action
 
 const (
 	Read   Action = "read"
@@ -29,7 +30,7 @@ const (
 )
 
 // Effect はルールが一致したときの効果。
-type Effect string
+type Effect = schema.Effect
 
 const (
 	Allow Effect = "allow"
@@ -46,11 +47,7 @@ type Rule struct {
 }
 
 // Limits はサイズと件数の上限。値と既定値は CUE スキーマだけが持つ。
-type Limits struct {
-	MaxReadBytes   int64
-	MaxWriteBytes  int64
-	MaxListEntries int
-}
+type Limits = schema.Limits
 
 // Policy は検証済みのポリシー。読み込み後は変更しない。
 type Policy struct {
@@ -77,38 +74,25 @@ func LoadFile(path string) (*Policy, error) {
 // filename はエラーメッセージの位置表示にだけ使う。
 func Load(filename string, src []byte) (*Policy, error) {
 	ctx := cuecontext.New()
-	schema := ctx.CompileBytes(schemaSource, cue.Filename("schema/policy.cue"))
-	if err := schema.Err(); err != nil {
+	schemaValue := ctx.CompileBytes(schemaSource, cue.Filename("schema/policy.cue"))
+	if err := schemaValue.Err(); err != nil {
 		return nil, fmt.Errorf("compile embedded schema: %w", err)
 	}
 	user := ctx.CompileBytes(src, cue.Filename(filename))
 	if err := user.Err(); err != nil {
 		return nil, invalidPolicy(err)
 	}
-	v := schema.LookupPath(cue.ParsePath("#Policy")).Unify(user)
+	v := schemaValue.LookupPath(cue.ParsePath("#Policy")).Unify(user)
 	if err := v.Validate(cue.Concrete(true)); err != nil {
 		return nil, invalidPolicy(err)
 	}
 
-	var raw struct {
-		Rules map[string]struct {
-			Path      string   `json:"path"`
-			Actions   []Action `json:"actions"`
-			Effect    Effect   `json:"effect"`
-			Recursive bool     `json:"recursive"`
-		} `json:"rules"`
-		Limits struct {
-			MaxReadBytes   int64 `json:"maxReadBytes"`
-			MaxWriteBytes  int64 `json:"maxWriteBytes"`
-			MaxListEntries int   `json:"maxListEntries"`
-		} `json:"limits"`
-		Tests []policyTest `json:"tests"`
-	}
+	var raw schema.Policy
 	if err := v.Decode(&raw); err != nil {
 		return nil, invalidPolicy(err)
 	}
 
-	p := &Policy{limits: Limits(raw.Limits)}
+	p := &Policy{limits: raw.Limits}
 	for name, r := range raw.Rules {
 		// スキーマでは表しきれない規則（".." やグロブ構文）はここで pathutil により検証する。
 		path, err := pathutil.ParsePattern(r.Path)

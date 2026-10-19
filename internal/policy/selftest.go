@@ -5,18 +5,12 @@ import (
 	"strings"
 
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/policy/schema"
 )
-
-// policyTest は、ポリシーの tests に書かれた期待する判定。
-type policyTest struct {
-	Path   string `json:"path"`
-	Action Action `json:"action"`
-	Want   Effect `json:"want"`
-}
 
 // runTests は、tests を判定器で実行する。期待と食い違うものがあれば、全件をまとめたエラーを返す。
 // 期待が外れるポリシーで起動させないための検査で、判定そのものには影響しない。
-func runTests(e *Engine, tests []policyTest) error {
+func runTests(e *Engine, tests []schema.Test) error {
 	var failures []string
 	for i, tc := range tests {
 		path, err := pathutil.Parse(tc.Path)
