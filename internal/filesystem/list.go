@@ -13,7 +13,7 @@ import (
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
 )
 
-// Entry は直下の要素の名前と種別。種別は "file"、"directory"、"symlink"、"other" のいずれか。
+// Entry は直下の要素の名前と種別。種別は "file"、"dir"、"symlink"、"other" のいずれか。
 type Entry struct {
 	Name string
 	Type string
@@ -51,7 +51,7 @@ func entryType(mode os.FileMode) string {
 	case mode.IsRegular():
 		return "file"
 	case mode.IsDir():
-		return "directory"
+		return "dir"
 	case mode&os.ModeSymlink != 0:
 		return "symlink"
 	default:
