@@ -207,6 +207,36 @@ Adding a path to `_hidden` denies every action on it. The result is still
 checked against the schema, so a rule built this way must be valid like any
 other.
 
+## Tests
+
+A policy can state the decisions its author expects. Each test names a path,
+an action, and the result (`"allow"` or `"deny"`):
+
+```cue
+tests: [
+	{path: "src/main.go", action: "read", want: "allow"},
+	{path: "src/.env", action: "read", want: "deny"},
+]
+```
+
+When the policy is loaded, every test runs against the same decision logic
+the server uses: deny first, then allow, then default deny. If any result
+differs from `want`, the server does not start and the error lists every
+test that failed:
+
+```text
+policy tests failed:
+tests[1]: read src/.env: want deny, got allow (rule "src-read")
+```
+
+- `tests` is optional. Without it nothing extra runs.
+- `path` is a concrete path with the same rules as a request path, not a glob.
+- Tests only check the policy. They cannot grant or remove access.
+
+Write a test for each deny rule, and for one path next to it that must stay
+allowed. A later edit that loosens a rule then fails at startup instead of
+when the agent reads a secret.
+
 ## Writing a policy
 
 - Start with the smallest set of allows. Everything else is denied by default.
@@ -214,8 +244,9 @@ other.
   at least `**/.env*`, and `.git` if the root is a repository.
 - Keep the policy file outside the root and owned by someone you trust. The
   agent must not be able to change it.
-- Check a change by starting the server and calling the tools, or by running
-  the sample test in `cmd/agentguard`.
+- Add [tests](#tests) for what must stay denied, then check a change by
+  starting the server and calling the tools, or by running the sample test in
+  `cmd/agentguard`.
 
 ## Validation errors
 
@@ -227,7 +258,10 @@ The server reports a clear message at startup for:
 - duplicate actions in one rule,
 - a rule `path` that is empty, absolute, contains `..`, `\`, `:`, a control
   character, or `[`, `]`, `{`, `}`,
-- a size limit outside its range.
+- a size limit outside its range,
+- a `tests` entry with an unknown field, action, or `want`, or a path that is
+  not a valid request path,
+- a test whose `want` differs from the actual decision.
 
 The policy is validated in CUE and again in Go. A value that passes one check
 but fails the other is refused.
