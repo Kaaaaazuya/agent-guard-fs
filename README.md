@@ -58,8 +58,8 @@ export GOPROXY=https://golang.flatt.tech   # no ",direct" fallback
 
 ## Usage
 
-See the [usage guide](docs/usage.md) for building, running the checks and
-writing a policy.
+See the [usage guide](docs/usage.md) for what works today, a walkthrough of
+the sample policy, building, and writing a policy.
 
 ## License
 

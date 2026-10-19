@@ -3,20 +3,96 @@
 English | [日本語](usage.ja.md)
 
 This guide covers what you can do with AgentGuard FS on the current `main`
-branch. The project is in early development: the policy format and its
-validation work, but the MCP server itself does not run yet. Sections are
-added here as features land.
+branch. The project is in early development: the policy, the file operations
+and the audit log work as Go packages, but the MCP server that an agent
+connects to is not wired up yet. Sections are added here as features land.
 
 ## What works today
 
 | Area | State |
 | --- | --- |
 | Building the `agentguard` binary | Works |
-| Policy file format and validation | Works (used from Go tests; no command-line check yet) |
-| Rule path syntax and normalization | Works |
-| MCP server and the file tools | Not implemented. `agentguard` prints `agentguard: not implemented yet` and exits with status 1 |
+| Policy file format and validation | Works |
+| Allow/deny decisions for each operation | Works |
+| Reading, writing, listing and deleting files under the root | Works inside the Go packages (`internal/guard`) |
+| Audit log (one JSON line per operation) | Works inside the Go packages |
+| MCP server and the `agentguard` command line | Not implemented. `agentguard` prints `agentguard: not implemented yet` and exits with status 1 |
 
-## 1. Set up and build
+## How it fits together
+
+When the MCP server is finished, an AI agent will not touch your files
+directly. It calls AgentGuard FS's tools, and every call passes through the
+same four steps. The steps on the right already work on `main`; the MCP
+connection on the left is planned.
+
+```text
+ AI agent (MCP client)                AgentGuard FS
+ ─────────────────────               ─────────────────────────────────────────
+  read_file   ".env"    ──(planned)──▶ 1. check the path    (no "..", no "/x")
+  write_file  "src/a.go"              2. ask the policy    (deny first, default deny)
+  list_files  "."                     3. touch the file    (inside --root, no symlinks)
+  delete_file "tmp.txt" ◀──────────── 4. write an audit line to stderr
+```
+
+The planned command line takes the project directory the agent may work in
+and a policy file kept outside it:
+
+```sh
+# planned: does not run yet
+agentguard --root ./my-project --policy ./my-policy.cue
+```
+
+## Walkthrough: the sample policy in action
+
+This walkthrough runs [`examples/basic/policy.cue`](../examples/basic/policy.cue)
+against a small project. Every result below was produced by the guard layer
+on `main`; only the MCP tool names around it are planned.
+
+The project the agent works in:
+
+```text
+my-project/
+├── .env            # secrets
+├── .git/config
+├── README.md
+├── docs/guide.md
+├── go.mod
+└── src/
+    ├── .env.local  # more secrets
+    └── main.go
+```
+
+What the agent gets back for each request:
+
+| Agent asks to | Result | Decided by |
+| --- | --- | --- |
+| List `.` | `docs`, `go.mod`, `src` | `root-list` (allow) |
+| List `src` | `main.go` | `source-read` (allow) |
+| Read `src/main.go` | The file's text | `source-read` (allow) |
+| Write `src/util.go` | Created | `source-write` (allow) |
+| Read `.env` | `policy_denied` | `env-deny` (deny) |
+| Write `go.mod` | `policy_denied` | `go-mod-deny` (deny) |
+| Read `README.md` | `policy_denied` | No allow rule (default deny) |
+| Write `docs/guide.md` | `policy_denied` | No allow rule for `write` (default deny) |
+| Delete `src/util.go` | `policy_denied` | No allow rule for `delete` (default deny) |
+| Read `../etc/passwd` | `invalid_argument` | Rejected before the policy is asked |
+
+Three things to notice:
+
+- **Hidden, not just blocked.** Listing `.` does not show `.env`, `.git` or
+  `README.md`, and listing `src` does not show `.env.local`. The agent only
+  sees entries it is allowed to list.
+- **Denials look the same.** A denied request always returns
+  `policy_denied: the operation is not allowed`, whether or not the file
+  exists, so the agent cannot probe for hidden files.
+- **Everything is logged.** Each request writes one JSON line to stderr,
+  never the file's contents. For example, the `.env` read above:
+
+  ```json
+  {"time":"…","level":"INFO","msg":"operation","action":"read","path":".env","decision":"deny","rule":"env-deny","result":"policy_denied","duration_ms":0.0017}
+  ```
+
+## Set up and build
 
 You need:
 
@@ -36,7 +112,7 @@ task build          # writes bin/agentguard
 ./bin/agentguard    # prints "agentguard: not implemented yet", exit status 1
 ```
 
-## 2. Run the checks
+## Run the checks
 
 | Command | What it does |
 | --- | --- |
@@ -52,7 +128,7 @@ task build          # writes bin/agentguard
 
 Run `task --list` to see the same list from the Taskfile.
 
-## 3. Write a policy
+## Write a policy
 
 A policy is a single CUE file. Start from
 [`examples/basic/policy.cue`](../examples/basic/policy.cue).
@@ -148,6 +224,6 @@ and a path that climbs out with `..`:
 invalid policy: rule "r": invalid_argument: path must not contain ".."
 ```
 
-There is no command to check a policy file yet. The example policy is loaded
-by `go test ./internal/policy`, so `task test` fails if it ever becomes
-invalid.
+There is no command to check a policy file yet. `go test ./internal/policy` loads the
+example policy and checks several of its decisions, so `task test` fails if
+the example stops loading or its main decisions change.
