@@ -33,11 +33,25 @@ To fetch modules through the Takumi Guard proxy the CI uses:
 export GOPROXY=https://golang.flatt.tech   # no ",direct" fallback
 ```
 
-Run every check (format, vet, lint, tests with the race detector, build):
+Run every check (format, generated code, vet, lint, tests with the race
+detector, build):
 
 ```sh
 task
 ```
+
+The Go types that decode a policy are generated from the CUE schema in
+`internal/policy/schema/policy.cue`. After changing the schema, regenerate them
+and commit the result in a separate commit:
+
+```sh
+task generate
+```
+
+`task generate-check`, which CI runs, fails if the generated file is out of
+date. The generator is `cue` at the same version as `cuelang.org/go` in
+`go.mod` (`CUE_VERSION` in `Taskfile.yml`); keep the two in step when you
+update the module.
 
 ## Command line
 

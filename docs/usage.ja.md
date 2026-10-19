@@ -32,11 +32,19 @@ CI と同じ Takumi Guard プロキシ経由で依存を取得する場合:
 export GOPROXY=https://golang.flatt.tech   # ",direct" のフォールバックは付けない
 ```
 
-すべてのチェック（フォーマット、vet、lint、レース検出付きのテスト、ビルド）を実行します。
+すべてのチェック（フォーマット、生成コード、vet、lint、レース検出付きのテスト、ビルド）を実行します。
 
 ```sh
 task
 ```
+
+ポリシーを読み込むための Go の型は、`internal/policy/schema/policy.cue` の CUE スキーマから生成します。スキーマを変えたら、型を再生成し、結果は別のコミットにしてください。
+
+```sh
+task generate
+```
+
+CI が実行する `task generate-check` は、生成されたファイルが古いと失敗します。生成に使う `cue` は、`go.mod` の `cuelang.org/go` と同じバージョン（`Taskfile.yml` の `CUE_VERSION`）です。モジュールを更新するときは、両方をそろえてください。
 
 ## コマンドライン
 
