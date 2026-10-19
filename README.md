@@ -83,3 +83,7 @@ read `docs/` and `go.mod`, and never see `.env` files or `.git/`.
 ## License
 
 [Apache License 2.0](LICENSE)
+
+The runtime dependencies (CUE, the MCP Go SDK, and their transitive modules)
+use the Apache-2.0, MIT, BSD-3-Clause, or ISC licenses, which are compatible
+with Apache-2.0.

@@ -77,3 +77,6 @@ bin/agentguard --root ./examples/basic/project --policy ./examples/basic/policy.
 ## ライセンス
 
 [Apache License 2.0](LICENSE)
+
+実行時の依存（CUE、MCP の Go SDK、およびそれらの推移的な依存）は、Apache-2.0、MIT、BSD-3-Clause、
+ISC のいずれかのライセンスです。いずれも Apache-2.0 と両立します。
