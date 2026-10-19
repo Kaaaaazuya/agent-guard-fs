@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-19
+
 ### Added
 
 - Project skeleton: Go module, `agentguard` command stub, Taskfile, CI on
