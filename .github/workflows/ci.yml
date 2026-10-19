@@ -14,31 +14,79 @@ env:
   GOTOOLCHAIN: local
 
 jobs:
+  # ドキュメントだけを変える PR では Go の検証を省く。対象はルートの README・
+  # CHANGELOG・LICENSE と docs/ のみ。examples/ 配下の .md はテストの
+  # フィクスチャなので含めない。push や判定失敗時は全ジョブを実行する。
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # checkout したのは PR のマージコミットなので、第1親との差分が PR の変更。
+          files="$(git diff --name-only --no-renames HEAD^1 HEAD)"
+          echo "$files"
+          if echo "$files" | grep -qvE '^(README(\.ja)?\.md|CHANGELOG\.md|LICENSE|docs/.*)$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # matrix ジョブをジョブ単位で skip すると、必須チェックが要求する展開後の
+  # 名前（test (ubuntu-latest, go 1.26.x) など）が報告されず PR が止まる。
+  # そのためジョブは起動し、ステップ単位で省く。
+  # changes が失敗したときは出力が空になり、検証を実行する側に倒れる。
   test:
     name: test (${{ matrix.os }}, go ${{ matrix.go }})
+    needs: changes
+    if: ${{ !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
         go: ["1.26.x", "1.27.x"]
     runs-on: ${{ matrix.os }}
+    env:
+      RUN: ${{ needs.changes.outputs.code != 'false' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.RUN == 'true'
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: env.RUN == 'true'
         with:
           go-version: ${{ matrix.go }}
       # 依存は Takumi Guard 経由で取得する（`direct` へのフォールバックなし）。
       - uses: flatt-security/setup-takumi-guard-golang@02545d3425218766aac4dca114dcc3f6eaa0df4a # v1.3.0
+        if: env.RUN == 'true'
       - run: go mod download
+        if: env.RUN == 'true'
       - uses: go-task/setup-task@a00fbb05ce67b35648be3c78cbc9fd85354c757e # v2.2.0
+        if: env.RUN == 'true'
         with:
           version: 3.54.0
       - run: task fmt-check
+        if: env.RUN == 'true'
       - run: task vet
+        if: env.RUN == 'true'
       - run: task test
+        if: env.RUN == 'true'
       - run: task build
+        if: env.RUN == 'true'
 
   lint:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,6 +99,8 @@ jobs:
           version: v2.15.0
 
   vuln:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
