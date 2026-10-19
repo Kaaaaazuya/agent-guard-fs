@@ -102,6 +102,7 @@ func Load(filename string, src []byte) (*Policy, error) {
 			MaxWriteBytes  int64 `json:"maxWriteBytes"`
 			MaxListEntries int   `json:"maxListEntries"`
 		} `json:"limits"`
+		Tests []policyTest `json:"tests"`
 	}
 	if err := v.Decode(&raw); err != nil {
 		return nil, invalidPolicy(err)
@@ -124,6 +125,9 @@ func Load(filename string, src []byte) (*Policy, error) {
 	}
 	// マップの反復順は不定なので、判定と出力を決定的にするため名前順に並べる。
 	slices.SortFunc(p.rules, func(a, b Rule) int { return strings.Compare(a.Name, b.Name) })
+	if err := runTests(NewEngine(p), raw.Tests); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 
