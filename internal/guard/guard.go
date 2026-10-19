@@ -5,7 +5,9 @@ package guard
 
 import (
 	"context"
+	"time"
 
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/audit"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/errs"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/filesystem"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/pathutil"
@@ -17,11 +19,12 @@ type Guard struct {
 	engine *policy.Engine
 	root   *filesystem.Root
 	limits policy.Limits
+	audit  *audit.Logger
 }
 
-// New は判定に engine、操作に root、上限に limits を使う Guard を返す。
-func New(engine *policy.Engine, root *filesystem.Root, limits policy.Limits) *Guard {
-	return &Guard{engine: engine, root: root, limits: limits}
+// New は判定に engine、操作に root、上限に limits、監査の出力に log を使う Guard を返す。
+func New(engine *policy.Engine, root *filesystem.Root, limits policy.Limits, log *audit.Logger) *Guard {
+	return &Guard{engine: engine, root: root, limits: limits, audit: log}
 }
 
 // ReadResult は read の成功結果。
@@ -38,8 +41,11 @@ type WriteResult struct {
 }
 
 // Read は path のファイル内容を読む。
-func (g *Guard) Read(ctx context.Context, path string) (ReadResult, error) {
-	rel, err := g.authorize(ctx, policy.Read, path)
+func (g *Guard) Read(ctx context.Context, path string) (res ReadResult, err error) {
+	a := g.begin(policy.Read)
+	defer func() { g.finish(a, err) }()
+
+	rel, err := g.authorize(ctx, a, path)
 	if err != nil {
 		return ReadResult{}, err
 	}
@@ -51,8 +57,11 @@ func (g *Guard) Read(ctx context.Context, path string) (ReadResult, error) {
 }
 
 // Write は path の内容を content で置き換え、無ければ作成する。
-func (g *Guard) Write(ctx context.Context, path string, content []byte) (WriteResult, error) {
-	rel, err := g.authorize(ctx, policy.Write, path)
+func (g *Guard) Write(ctx context.Context, path string, content []byte) (res WriteResult, err error) {
+	a := g.begin(policy.Write)
+	defer func() { g.finish(a, err) }()
+
+	rel, err := g.authorize(ctx, a, path)
 	if err != nil {
 		return WriteResult{}, err
 	}
@@ -64,8 +73,11 @@ func (g *Guard) Write(ctx context.Context, path string, content []byte) (WriteRe
 }
 
 // Delete は path の通常ファイルを削除する。
-func (g *Guard) Delete(ctx context.Context, path string) (string, error) {
-	rel, err := g.authorize(ctx, policy.Delete, path)
+func (g *Guard) Delete(ctx context.Context, path string) (deleted string, err error) {
+	a := g.begin(policy.Delete)
+	defer func() { g.finish(a, err) }()
+
+	rel, err := g.authorize(ctx, a, path)
 	if err != nil {
 		return "", err
 	}
@@ -77,7 +89,8 @@ func (g *Guard) Delete(ctx context.Context, path string) (string, error) {
 
 // authorize は path を検証し、action を許可してよいかを判定する。拒否されたら、
 // ファイルシステムに触れる前に policy_denied を返す。応答の文言は対象の存在有無によらず同じにする。
-func (g *Guard) authorize(ctx context.Context, action policy.Action, path string) (pathutil.RelPath, error) {
+// 判定の結果は a に記録する。
+func (g *Guard) authorize(ctx context.Context, a *attempt, path string) (pathutil.RelPath, error) {
 	if err := ctx.Err(); err != nil {
 		return pathutil.RelPath{}, err
 	}
@@ -85,15 +98,51 @@ func (g *Guard) authorize(ctx context.Context, action policy.Action, path string
 	if err != nil {
 		return pathutil.RelPath{}, err
 	}
+	a.path = rel.String()
+
 	// 一時ファイルの名前はポリシーにかかわらず拒否する。名前だけで決まるので存在有無は漏れない。
 	if filesystem.IsTempName(rel) {
+		a.decision = audit.Deny
 		return pathutil.RelPath{}, errs.New(errs.PolicyDenied, "the operation is not allowed")
 	}
-	d := g.engine.Evaluate(action, rel)
+	d := g.engine.Evaluate(a.action, rel)
+	a.rule = d.Rule
 	if !d.Allowed {
+		a.decision = audit.Deny
 		denied := errs.New(errs.PolicyDenied, "the operation is not allowed")
 		denied.Rule = d.Rule
 		return pathutil.RelPath{}, denied
 	}
+	a.decision = audit.Allow
 	return rel, nil
+}
+
+// attempt は 1 回の操作の監査イベントを組み立てる途中の状態。
+type attempt struct {
+	start    time.Time
+	action   policy.Action
+	path     string
+	decision string
+	rule     string
+}
+
+// begin は action の操作を始める。判定の前に終わった操作は、判定を未評価として記録する。
+func (g *Guard) begin(action policy.Action) *attempt {
+	return &attempt{start: time.Now(), action: action, decision: audit.NotEvaluated}
+}
+
+// finish は操作の結果 err を監査イベントとして記録する。
+func (g *Guard) finish(a *attempt, err error) {
+	result := "ok"
+	if err != nil {
+		result = string(errs.CodeOf(err))
+	}
+	g.audit.Log(audit.Event{
+		Action:   string(a.action),
+		Path:     a.path,
+		Decision: a.decision,
+		Rule:     a.rule,
+		Result:   result,
+		Duration: time.Since(a.start),
+	})
 }

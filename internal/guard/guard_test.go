@@ -6,18 +6,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/Kaaaaazuya/agent-guard-fs/internal/audit"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/errs"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/filesystem"
 	"github.com/Kaaaaazuya/agent-guard-fs/internal/policy"
 )
 
-// newGuard は rules のポリシーで動く Guard と、そのルートを返す。ルートの外の .env も用意する。
+// newGuard は rules のポリシーで動く Guard と、そのルートを返す。監査ログは捨てる。
 func newGuard(t *testing.T, rules string, maxListEntries int) (*Guard, string) {
+	t.Helper()
+	return newGuardWithLog(t, rules, maxListEntries, io.Discard)
+}
+
+// newGuardWithLog は、監査ログを w に書く Guard と、そのルートを返す。
+func newGuardWithLog(t *testing.T, rules string, maxListEntries int, w io.Writer) (*Guard, string) {
 	t.Helper()
 	base := t.TempDir()
 	dir := filepath.Join(base, "root")
@@ -34,7 +42,7 @@ func newGuard(t *testing.T, rules string, maxListEntries int) (*Guard, string) {
 		t.Fatalf("filesystem.Open() error = %v", err)
 	}
 	t.Cleanup(func() { _ = root.Close() })
-	return New(policy.NewEngine(p), root, p.Limits()), dir
+	return New(policy.NewEngine(p), root, p.Limits(), audit.New(w)), dir
 }
 
 // snapshot は dir の全ファイルの内容を、相対パスと結び付けて返す。ディレクトリも含む。
