@@ -26,6 +26,8 @@ const (
 type Error struct {
 	Code    Code
 	Message string
+	// Rule は policy_denied のとき、判定を決めたルールの名前。既定拒否では空。
+	Rule string
 }
 
 func (e *Error) Error() string {
