@@ -3,19 +3,92 @@
 [English](usage.md) | 日本語
 
 このガイドでは、現在の `main` ブランチの AgentGuard FS でできることを説明します。
-プロジェクトは開発初期で、ポリシーの書式と検証は動きますが、MCP サーバー本体はまだ動作しません。
-機能が入り次第、このガイドに節を追加します。
+プロジェクトは開発初期です。ポリシー、ファイル操作、監査ログは Go パッケージとして動きますが、
+エージェントが接続する MCP サーバーはまだつながっていません。機能が入り次第、このガイドに節を追加します。
 
 ## 現在できること
 
 | 項目 | 状態 |
 | --- | --- |
 | `agentguard` バイナリのビルド | 動作する |
-| ポリシーファイルの書式と検証 | 動作する（Go のテストから使用。コマンドでの検査はまだない） |
-| ルールパスの構文と正規化 | 動作する |
-| MCP サーバーとファイル操作ツール | 未実装。`agentguard` は `agentguard: not implemented yet` を出力し、終了ステータス 1 で終わる |
+| ポリシーファイルの書式と検証 | 動作する |
+| 操作ごとの許可・拒否の判定 | 動作する |
+| ルート配下のファイルの読み取り・書き込み・一覧・削除 | Go パッケージ（`internal/guard`）内で動作する |
+| 監査ログ（操作ごとに JSON 1 行） | Go パッケージ内で動作する |
+| MCP サーバーと `agentguard` のコマンドライン | 未実装。`agentguard` は `agentguard: not implemented yet` を出力し、終了ステータス 1 で終わる |
 
-## 1. 準備とビルド
+## 全体の流れ
+
+MCP サーバーが完成すると、AI エージェントはファイルに直接触れず、AgentGuard FS のツールを
+呼び出すようになります。どの呼び出しも同じ 4 つの段階を通ります。右側の段階は `main` で
+すでに動いており、左側の MCP 接続は予定です。
+
+```text
+ AI エージェント（MCP クライアント）    AgentGuard FS
+ ─────────────────────               ─────────────────────────────────────────
+  read_file   ".env"    ──（予定）───▶ 1. パスを検証        （".." や "/x" は不可）
+  write_file  "src/a.go"              2. ポリシーに問い合わせ（拒否優先・デフォルト拒否）
+  list_files  "."                     3. ファイルを操作      （--root の中だけ、symlink 不可）
+  delete_file "tmp.txt" ◀──────────── 4. 監査ログを stderr に 1 行出力
+```
+
+予定しているコマンドラインでは、エージェントに作業させるプロジェクトのディレクトリと、
+その外に置いたポリシーファイルを指定します。
+
+```sh
+# 予定: まだ動きません
+agentguard --root ./my-project --policy ./my-policy.cue
+```
+
+## 実例: サンプルポリシーの動き
+
+[`examples/basic/policy.cue`](../examples/basic/policy.cue) を小さなプロジェクトに適用した例です。
+以下の結果はすべて `main` の guard 層で実際に得たものです。周りの MCP ツール名だけが予定です。
+
+エージェントが作業するプロジェクト:
+
+```text
+my-project/
+├── .env            # 秘密情報
+├── .git/config
+├── README.md
+├── docs/guide.md
+├── go.mod
+└── src/
+    ├── .env.local  # これも秘密情報
+    └── main.go
+```
+
+エージェントの要求ごとの結果:
+
+| エージェントの要求 | 結果 | 決めたルール |
+| --- | --- | --- |
+| `.` を一覧 | `docs`、`go.mod`、`src` | `root-list`（allow） |
+| `src` を一覧 | `main.go` | `source-read`（allow） |
+| `src/main.go` を読む | ファイルの内容 | `source-read`（allow） |
+| `src/util.go` に書く | 新規作成 | `source-write`（allow） |
+| `.env` を読む | `policy_denied` | `env-deny`（deny） |
+| `go.mod` に書く | `policy_denied` | `go-mod-deny`（deny） |
+| `README.md` を読む | `policy_denied` | allow ルールなし（デフォルト拒否） |
+| `docs/guide.md` に書く | `policy_denied` | `write` の allow ルールなし（デフォルト拒否） |
+| `src/util.go` を削除 | `policy_denied` | `delete` の allow ルールなし（デフォルト拒否） |
+| `../etc/passwd` を読む | `invalid_argument` | ポリシーに問い合わせる前に拒否 |
+
+注目してほしい点が 3 つあります。
+
+- **拒否したものは見せない。** `.` の一覧には `.env`、`.git`、`README.md` が出ず、`src` の一覧にも
+  `.env.local` は出ません。エージェントには一覧を許可されたエントリだけが見えます。
+- **拒否の応答はどれも同じ。** 拒否された要求は、ファイルがあってもなくても常に
+  `policy_denied: the operation is not allowed` を返すので、エージェントは隠れたファイルの
+  有無を探れません。
+- **すべて記録する。** 要求ごとに JSON を 1 行 stderr に出します。ファイルの内容は出しません。
+  たとえば上の `.env` の読み取りは次のようになります。
+
+  ```json
+  {"time":"…","level":"INFO","msg":"operation","action":"read","path":".env","decision":"deny","rule":"env-deny","result":"policy_denied","duration_ms":0.0017}
+  ```
+
+## 準備とビルド
 
 必要なもの:
 
@@ -35,7 +108,7 @@ task build          # bin/agentguard を作る
 ./bin/agentguard    # "agentguard: not implemented yet" を出力し、終了ステータス 1
 ```
 
-## 2. チェックを実行する
+## チェックを実行する
 
 | コマンド | 内容 |
 | --- | --- |
@@ -51,7 +124,7 @@ task build          # bin/agentguard を作る
 
 同じ一覧は `task --list` でも確認できます。
 
-## 3. ポリシーを書く
+## ポリシーを書く
 
 ポリシーは 1 つの CUE ファイルです。
 [`examples/basic/policy.cue`](../examples/basic/policy.cue) をもとに書き始めてください。
@@ -143,5 +216,5 @@ invalid policy:
 invalid policy: rule "r": invalid_argument: path must not contain ".."
 ```
 
-ポリシーファイルを検査するコマンドはまだありません。サンプルポリシーは
-`go test ./internal/policy` で読み込んでいるので、不正になれば `task test` が失敗します。
+ポリシーファイルを検査するコマンドはまだありません。`go test ./internal/policy` がサンプルポリシーを
+読み込み、主な判定を確かめているので、読み込めなくなったり主な判定が変わったりすると `task test` が失敗します。

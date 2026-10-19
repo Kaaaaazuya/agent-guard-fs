@@ -55,7 +55,7 @@ export GOPROXY=https://golang.flatt.tech   # ",direct" は付けない
 
 ## 使い方
 
-ビルド、チェックの実行、ポリシーの書き方は [使い方ガイド](docs/usage.ja.md) を参照してください。
+現在できること、サンプルポリシーの実例、ビルド、ポリシーの書き方は [使い方ガイド](docs/usage.ja.md) を参照してください。
 
 ## ライセンス
 
