@@ -28,4 +28,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   stop startup if any of them differs.
 - `agentguard explain`: shows how a policy decides one operation and which rule
   decides it, without opening a root.
+- Startup and `explain` warn about allow rules that a deny rule always overrides.
 - Documentation for usage, policy, and security, in English and Japanese.
