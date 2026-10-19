@@ -72,3 +72,17 @@ rules: {
 		effect: "deny"
 	}
 }
+
+// 期待する判定。ポリシーを読み込むときに実行され、食い違うと起動しない。
+tests: [
+	{path: "src/main.go", action: "read", want: "allow"},
+	{path: "src/main.go", action: "write", want: "allow"},
+	{path: "src/.env", action: "read", want: "deny"},
+	{path: "src/.ENV", action: "read", want: "deny"},
+	{path: ".git/config", action: "write", want: "deny"},
+	{path: "docs/README.md", action: "read", want: "allow"},
+	{path: "docs/README.md", action: "write", want: "deny"},
+	{path: "go.mod", action: "read", want: "allow"},
+	{path: "go.mod", action: "delete", want: "deny"},
+	{path: "other/file.txt", action: "read", want: "deny"},
+]
