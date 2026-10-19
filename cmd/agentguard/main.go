@@ -22,6 +22,9 @@ func main() {
 // run は main とテストから呼ぶエントリーポイント。起動に失敗したら終了コードを 1 にし、
 // 引数が不正なら 2 を返す。
 func run(args []string) int {
+	if len(args) > 0 && args[0] == "explain" {
+		return runExplain(args[1:], os.Stdout)
+	}
 	fset := flag.NewFlagSet("agentguard", flag.ContinueOnError)
 	fset.SetOutput(os.Stderr)
 	rootDir := fset.String("root", "", "the only directory the server may access (required)")

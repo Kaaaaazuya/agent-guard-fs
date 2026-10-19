@@ -60,6 +60,26 @@ agentguard --root <dir> --policy <file>
 | 1 | 起動または実行時の失敗。理由を標準エラー出力に出す。 |
 | 2 | 引数が不正。使い方の行を標準エラー出力に出す。 |
 
+### 判定の確認
+
+```sh
+agentguard explain --policy <file> <read|write|delete|list> <path>
+```
+
+ポリシーが 1 つの操作をどう判定し、どのルールが決めたかを表示します。
+ポリシーはサーバーと同じ方法で読み込むので、検証や `tests` に失敗するポリシーは拒否されますが、ルートは開かず、サーバーも起動しません。答えは標準出力に出ます。
+
+```text
+$ agentguard explain --policy examples/basic/policy.cue read src/.ENV
+deny
+action: read
+path:   src/.ENV
+rule:   env-deny
+reason: deny rule matched
+```
+
+1 行目は `allow` か `deny` です。どの allow ルールにも一致しなかった場合（デフォルト拒否）は、`rule` が `(none)` になります。パスはリクエストと同じ規則で正規化され、`./src//a` は `src/a` と表示されます。判定できたときは拒否でも終了コードが 0 で、ポリシーを読み込めなければ 1、引数が不正、またはサーバーが拒否するパスなら 2 です。
+
 ## 起動の順序と起動拒否
 
 起動時は次の順に検査し、最初に失敗した時点で止まります。

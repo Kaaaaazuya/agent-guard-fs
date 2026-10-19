@@ -26,4 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Sample project and policy in `examples/basic`, covered by a test.
 - Policy `tests`: expected decisions that run when the policy is loaded and
   stop startup if any of them differs.
+- `agentguard explain`: shows how a policy decides one operation and which rule
+  decides it, without opening a root.
 - Documentation for usage, policy, and security, in English and Japanese.
