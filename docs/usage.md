@@ -61,6 +61,32 @@ Exit codes:
 | 1 | Startup or runtime failure. The reason is printed to standard error. |
 | 2 | Invalid arguments. The usage line is printed to standard error. |
 
+### Explaining a decision
+
+```sh
+agentguard explain --policy <file> <read|write|delete|list> <path>
+```
+
+This prints how the policy decides one operation and which rule decided it.
+It loads the policy the same way the server does, so a policy that fails
+validation or its own `tests` is refused, but it never opens a root and does
+not start a server. Standard output carries the answer:
+
+```text
+$ agentguard explain --policy examples/basic/policy.cue read src/.ENV
+deny
+action: read
+path:   src/.ENV
+rule:   env-deny
+reason: deny rule matched
+```
+
+The first line is `allow` or `deny`. `rule` is `(none)` when nothing allowed
+the operation (default deny). The path is normalized as it is for a request,
+so `./src//a` is shown as `src/a`. The exit code is 0 whenever a decision was
+made, including a denial; it is 1 if the policy cannot be loaded and 2 for
+invalid arguments or a path the server would reject.
+
 ## Startup order and refusals
 
 At startup the server runs these steps in order and stops at the first failure:

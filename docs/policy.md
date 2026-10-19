@@ -244,9 +244,10 @@ when the agent reads a secret.
   at least `**/.env*`, and `.git` if the root is a repository.
 - Keep the policy file outside the root and owned by someone you trust. The
   agent must not be able to change it.
-- Add [tests](#tests) for what must stay denied, then check a change by
-  starting the server and calling the tools, or by running the sample test in
-  `cmd/agentguard`.
+- Add [tests](#tests) for what must stay denied. To see which rule decides a
+  path, run [`agentguard explain`](usage.md#explaining-a-decision) on it.
+  Check a change end to end by starting the server and calling the tools, or
+  by running the sample test in `cmd/agentguard`.
 
 ## Validation errors
 
