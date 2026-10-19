@@ -30,6 +30,7 @@ func New(g *guard.Guard) *mcp.Server {
 		&mcp.ServerOptions{Capabilities: &mcp.ServerCapabilities{}},
 	)
 	srv.AddTool(readFileTool(), s.readFile)
+	srv.AddTool(writeFileTool(), s.writeFile)
 	return srv
 }
 
@@ -39,6 +40,9 @@ func decode(req *mcp.CallToolRequest, v any) error {
 	dec.DisallowUnknownFields()
 	return dec.Decode(v)
 }
+
+// boolPtr は、ツールアノテーションのポインタ型のフラグを作る。
+func boolPtr(b bool) *bool { return &b }
 
 // invalidArguments は引数が読めなかったときの結果を返す。
 func invalidArguments() *mcp.CallToolResult {
