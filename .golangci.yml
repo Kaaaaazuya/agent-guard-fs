@@ -1,0 +1,17 @@
+version: "2"
+
+run:
+  # `toolchain` 行ではなく、サポートする最小の言語バージョン（go.mod の `go`）で検査する。
+  go: "1.26"
+
+linters:
+  default: standard
+  enable:
+    - errorlint
+    - gosec
+    - misspell
+    - unconvert
+
+formatters:
+  enable:
+    - gofmt
