@@ -146,3 +146,8 @@ func (g *Guard) finish(a *attempt, err error) {
 		Duration: time.Since(a.start),
 	})
 }
+
+// Close はルートの記述子を閉じる。Close の後に操作を呼んではいけない。
+func (g *Guard) Close() error {
+	return g.root.Close()
+}
